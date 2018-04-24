@@ -291,6 +291,21 @@ export class AgmMap implements OnChanges, OnInit, OnDestroy {
   @Output() centerChange: EventEmitter<LatLngLiteral> = new EventEmitter<LatLngLiteral>();
 
   /**
+   * This event emitter is fired when the map at the start of a map drag.
+   */
+  @Output() dragStart: EventEmitter<LatLngLiteral> = new EventEmitter<LatLngLiteral>();
+
+  /**
+   * This event emitter is fired when the map is being dragged.
+   */
+  @Output() drag: EventEmitter<LatLngLiteral> = new EventEmitter<LatLngLiteral>();
+
+  /**
+   * This event emitter is fired when the map at the end of a map drag.
+   */
+  @Output() dragEnd: EventEmitter<LatLngLiteral> = new EventEmitter<LatLngLiteral>();
+
+  /**
    * This event is fired when the viewport bounds have changed.
    */
   @Output() boundsChange: EventEmitter<LatLngBounds> = new EventEmitter<LatLngBounds>();
@@ -363,6 +378,7 @@ export class AgmMap implements OnChanges, OnInit, OnDestroy {
 
     // register event listeners
     this._handleMapCenterChange();
+    this._handleMapDragEvents();
     this._handleMapZoomChange();
     this._handleMapMouseEvents();
     this._handleBoundsChange();
@@ -459,6 +475,28 @@ export class AgmMap implements OnChanges, OnInit, OnDestroy {
       });
     });
     this._observableSubscriptions.push(s);
+  }
+
+  private _handleMapDragEvents() {
+    interface Emitter {
+      emit(value: any): void;
+    }
+    type Event = {name: string, emitter: Emitter};
+
+    const events: Event[] = [
+      {name: 'drag', emitter: this.drag},
+      {name: 'dragend', emitter: this.dragEnd},
+      {name: 'dragstart', emitter: this.dragStart},
+    ];
+
+    events.forEach((e: Event) => {
+      const s = this._mapsWrapper.subscribeToMapEvent<{latLng: LatLng}>(e.name).subscribe(
+          (event: {latLng: LatLng}) => {
+            const value = <MouseEvent>{coords: {lat: event.latLng.lat(), lng: event.latLng.lng()}};
+            e.emitter.emit(value);
+          });
+      this._observableSubscriptions.push(s);
+    });
   }
 
   private _handleBoundsChange() {
